@@ -1,0 +1,5 @@
+Copy + paste into terminal to set permissions to run shell scripts:
+chmod +x refresh.sh
+
+To run scripts:
+./[Shell Script File Name]
