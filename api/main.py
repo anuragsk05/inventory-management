@@ -20,7 +20,7 @@ def add():
     d = str(input("Enter the date of this added item: "))
     e = int(input("Enter the amount of your item you would like to add: "))
     return a, b, c, d, e
-
+    
 #call add function
 a, b, c, d, e = add()
 
@@ -32,3 +32,9 @@ call = Add(id=a, item_name=b, brand=c, date_added=d, quantity=e)
 #id number is whats will be connected to all other properties
 inventory[a] = call
 print(inventory[a].item_name)
+
+def deletion():
+    key_del = int(input("Enter an the numnber of the id you want to delete"))
+    if key_del in inventory:
+        inventory.pop(key_del)
+
