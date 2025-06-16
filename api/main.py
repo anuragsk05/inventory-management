@@ -1,10 +1,7 @@
 import models
-import sqlalchemy as db
 from fastapi import FastAPI, Request
 from database import SessionLocal, engine
 from sqlalchemy.orm import Session
-from pydantic import BaseModel
-from models import Item
 app = FastAPI()
 
 models.Base.metadata.create_all(bind=engine)
@@ -34,20 +31,10 @@ call = Add(id=a, item_name=b, brand=c, date_added=d, quantity=e)
 #new key assigned with value from called function
 #id number is whats will be connected to all other properties
 inventory[a] = call
-
+print(inventory[a].item_name)
 
 def deletion():
     key_del = int(input("Enter an the numnber of the id you want to delete"))
     if key_del in inventory:
         inventory.pop(key_del)
 
-#calls instance of object to be used
-item = Item(id=a, item_name=b, brand=c, date_added=d, quantity=e)
-
-#to call sqlite database
-db_session = SessionLocal()
-
-#method to add to database via sqlalchemy to later write into it and then close it
-db.add(item)
-db.commit()
-db.close()
