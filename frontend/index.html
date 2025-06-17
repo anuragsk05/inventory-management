@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Inventory</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <h1>Inventory</h1>
+
+    <input type="text" id="searchInput" placeholder="Search...">
+
+    <form id="addItemForm">
+        <input type="text" id="itemName" placeholder="Name" required>
+        <input type="text" id="brand" placeholder="Brand" required>
+        <input type="date" id="dateAdded" required>
+        <input type="number" id="quantity" placeholder="Qty" min="0" required>
+        <button type="submit">Add</button>
+    </form>
+
+    <table id="inventoryTable">
+        <tr>
+            <th>Name</th>
+            <th>Brand</th>
+            <th>Date</th>
+            <th>Qty</th>
+            <th>Actions</th>
+        </tr>
+        <tbody id="inventoryTableBody">
+        </tbody>
+    </table>
+
+    <div id="pagination">
+        <button id="prevBtn" onclick="prevPage()">Previous</button>
+        <span id="pageInfo">Page 1</span>
+        <button id="nextBtn" onclick="nextPage()">Next</button>
+    </div>
+
+    <div id="editModal" class="popup">
+        <div class="box">
+            <span class="x" onclick="closeEditModal()">X</span>
+            <h2>Edit</h2>
+            <form id="editForm">
+                <input type="hidden" id="editItemId">
+                <input type="text" id="editItemName" placeholder="Name" required>
+                <input type="text" id="editBrand" placeholder="Brand" required>
+                <input type="date" id="editDateAdded" required>
+                <input type="number" id="editQuantity" placeholder="Qty" min="0" required>
+                <button type="submit">Save</button>
+            </form>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html> 

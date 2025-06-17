@@ -1,40 +1,108 @@
-import models
+import json
+import sqlalchemy as db
 from fastapi import FastAPI, Request
-from database import SessionLocal, engine
+from fastapi.middleware.cors import CORSMiddleware
+from .database import SessionLocal, engine
 from sqlalchemy.orm import Session
+from pydantic import BaseModel
+from .models import Item
+import sqlite3
+
 app = FastAPI()
 
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+from . import models
 models.Base.metadata.create_all(bind=engine)
 
-class Add(BaseModel):
-    id : int
-    item_name : str
-    brand : str
-    date_added : str
-    quantity : int
+class ItemModel(BaseModel):
+    id: int
+    item_name: str
+    brand: str
+    date_added: str
+    quantity: int
 
-def add():
-    a = int(input("Enter the id number you would like to add: "))
-    b = str(input("Enter the name of the item: "))
-    c = str(input("Enter the brand of the item: "))
-    d = str(input("Enter the date of this added item: "))
-    e = int(input("Enter the amount of your item you would like to add: "))
-    return a, b, c, d, e
+@app.get("/items/")
+def get_all_items():
+    conn = sqlite3.connect('items.db')
+    cursor = conn.cursor()
     
-#call add function
-a, b, c, d, e = add()
+    cursor.execute("SELECT * FROM items")
+    rows = cursor.fetchall()
+    
+    result = []
+    for row in rows:
+        result.append({
+            "id": row[0],
+            "item_name": row[1],
+            "brand": row[2],
+            "date_added": row[3],
+            "quantity": row[4]
+        })
+    
+    conn.close()
+    return result
 
-    #will return user input
-inventory = {}
-call = Add(id=a, item_name=b, brand=c, date_added=d, quantity=e)
+@app.post("/items/")
+def add_item(item: ItemModel):
+    conn = sqlite3.connect('items.db')
+    cursor = conn.cursor()
+    
+    cursor.execute("""
+        INSERT INTO items (id, item_name, brand, date_added, quantity) 
+        VALUES (?, ?, ?, ?, ?)
+    """, (item.id, item.item_name, item.brand, item.date_added, item.quantity))
+    
+    conn.commit()
+    conn.close()
 
-#new key assigned with value from called function
-#id number is whats will be connected to all other properties
-inventory[a] = call
-print(inventory[a].item_name)
+@app.get("/items/{item_id}")
+def get_item(item_id: int):
+    conn = sqlite3.connect('items.db')
+    cursor = conn.cursor()
+    
+    cursor.execute("SELECT * FROM items WHERE id = ?", (item_id,))
+    row = cursor.fetchone()
+    
+    conn.close()
+    
+    if row:
+        return {
+            "id": row[0],
+            "item_name": row[1],
+            "brand": row[2],
+            "date_added": row[3],
+            "quantity": row[4]
+        }
+    else:
+        return {"error": "Item not found"}
 
-def deletion():
-    key_del = int(input("Enter an the numnber of the id you want to delete"))
-    if key_del in inventory:
-        inventory.pop(key_del)
+@app.put("/items/{item_id}")
+def update_item(item_id: int, item: ItemModel):
+    conn = sqlite3.connect('items.db')
+    cursor = conn.cursor()
+    
+    cursor.execute("""
+        UPDATE items 
+        SET item_name = ?, brand = ?, date_added = ?, quantity = ? 
+        WHERE id = ?
+    """, (item.item_name, item.brand, item.date_added, item.quantity, item_id))
+    
+    conn.commit()
+    conn.close()
 
+@app.delete("/items/{item_id}")
+def delete_item(item_id: int):
+    conn = sqlite3.connect('items.db')
+    cursor = conn.cursor()
+    
+    cursor.execute("DELETE FROM items WHERE id = ?", (item_id,))
+    
+    conn.commit()
+    conn.close()

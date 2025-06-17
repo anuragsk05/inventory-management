@@ -1,6 +1,6 @@
 """Models for the database."""
 from sqlalchemy import Boolean, Column, Integer, String
-from database import Base
+from .database import Base
 
 class Item(Base):
     __tablename__ = "items"
