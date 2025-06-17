@@ -1,0 +1,30 @@
+[
+    {
+        "id": 211,
+        "item_name": "gucci",
+        "brand": "designer",
+        "date_added": "2-30-2005",
+        "quantity": 4
+    },
+    {
+        "id": 321,
+        "item_name": "walker",
+        "brand": "designer",
+        "date_added": "2-2005-2004",
+        "quantity": 5
+    },
+    {
+        "id": 2001,
+        "item_name": "walker",
+        "brand": "gucci",
+        "date_added": "09-02-2005",
+        "quantity": 24
+    },
+    {
+        "id": 3435,
+        "item_name": "backpack",
+        "brand": "gucci",
+        "date_added": "09-02-2005",
+        "quantity": 4
+    }
+]
