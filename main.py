@@ -1,95 +1,191 @@
-import models, json
-import sqlalchemy as db
-from fastapi import FastAPI, Request
-from database import SessionLocal, engine
-from sqlalchemy.orm import Session
-from pydantic import BaseModel
-from models import Item
+import json
 import sqlite3
+import bcrypt
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
+from sqlalchemy.orm import Session
+from database import SessionLocal, engine
+from models import Item
+import models
 
 app = FastAPI()
 
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 models.Base.metadata.create_all(bind=engine)
 
-class Add(BaseModel):
-    id : int
-    item_name : str
-    brand : str
-    date_added : str
-    quantity : int
 
-def add():
-    a = int(input("Enter the id number you would like to add: "))
-    b = str(input("Enter the name of the item: "))
-    c = str(input("Enter the brand of the item: "))
-    d = str(input("Enter the date of this added item: "))
-    e = int(input("Enter the amount of your item you would like to add: "))
 
-    #assigns user inputs to objects within class
-    return Add(id=a, item_name=b, brand=c, date_added=d, quantity=e)
+class UserModel(BaseModel):
+    user_id: str
+    name : str
+    password: str
 
-def delete():
-    # Connect to the database
+class ItemModel(BaseModel):
+    id: int
+    item_name: str
+    brand: str
+    date_added: str
+    quantity: int
+    user_id: str
+
+@app.get("/users/{id}/items/")
+def get_all_items():
     conn = sqlite3.connect('items.db')
-    cur = conn.cursor()
+    cursor = conn.cursor()
+    
+    cursor.execute("SELECT * FROM items")
+    rows = cursor.fetchall()
+    
+    result = []
+    for row in rows:
+        result.append({
+            "id": row[0],
+            "item_name": row[1],
+            "brand": row[2],
+            "date_added": row[3],
+            "quantity": row[4]
+            
+        })
+    
+    conn.close()
+    return result
 
-    item_id = int(input("Enter the ID number of the item you want to delete: "))
+@app.post("/users/{id}/items/")
+def add_item(item: ItemModel):
+    conn = sqlite3.connect('items.db')
+    cursor = conn.cursor()
+    
+    cursor.execute("""
+        INSERT INTO items (id, item_name, brand, date_added, quantity, user_id) 
+        VALUES (?, ?, ?, ?, ?, ?)
+    """, (item.id, item.item_name, item.brand, item.date_added, item.quantity, item.user_id))
 
-    cur.execute("SELECT * FROM items WHERE id = ?", (item_id,))
-    result = cur.fetchone()
-
-    if result:
-        cur.execute("DELETE FROM items WHERE id = ?", (item_id,))
-        conn.commit()
-        print("Item deleted successfully.")
+    
+    conn.commit()
     conn.close()
 
-inventory = {}
-def main():
-    choice = int(input("Enter 1 if you want to add something to database, enter 2 if you want to delete something from it: "))
-    if choice == 1:
-        item_data = add()
+@app.get("/users/{id}/items/{item_id}")
+def get_item(item_id: int):
+    conn = sqlite3.connect('items.db')
+    cursor = conn.cursor()
+    
+    cursor.execute("SELECT * FROM items WHERE id = ?", (item_id,))
 
-        #inventory will have a key thats added via object id to be assigned to attributes within add function
-        inventory[item_data.id] = item_data
+    row = cursor.fetchone()
+    
+    conn.close()
+    
+    if row:
+        return {
+            "id": row[0],
+            "item_name": row[1],
+            "brand": row[2],
+            "date_added": row[3],
+            "quantity": row[4]
+        }
+    else:
+        return {"error": "Item not found"}
 
-        # create a table based off methods of objects develpoed within "class Item"
-        item = Item(
-            id = item_data.id,
-            item_name = item_data.item_name,
-            brand = item_data.brand,
-            date_added = item_data.date_added,
-            quantity = item_data.quantity
+@app.put("/users/{user_id}/items/{item_id}")
+def update_item(item_id: int, item: ItemModel):
+    conn = sqlite3.connect('items.db')
+    cursor = conn.cursor()
+    
+    cursor.execute("""
+        UPDATE items 
+        SET item_name = ?, brand = ?, date_added = ?, quantity = ? 
+        WHERE id = ?
+    """, (item.item_name, item.brand, item.date_added, item.quantity, item_id))
+    
+    conn.commit()
+    conn.close()
+
+@app.delete("/users/{user_id}/items/{item_id}")
+def delete_item(item_id: int):
+    conn = sqlite3.connect('items.db')
+    cursor = conn.cursor()
+    
+    cursor.execute("DELETE FROM items WHERE id = ?", (item_id,))
+
+    conn.commit()
+    conn.close()
+
+
+@app.post("/login/")
+def login_user(user: UserModel):  # user comes in via JSON body
+    conn = sqlite3.connect('items.db')
+    cursor = conn.cursor()
+
+    # Step 1: Retrieve hashed password from DB
+    cursor.execute("SELECT password FROM users WHERE user_id = ?", (user.user_id,))
+    result = cursor.fetchone()      #grab user inputdata stored under login of username and password
+
+    if result is None:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    stored_hashed_pw = result[0]  # stored hash in DB
+
+    # Step 2: Compare using bcrypt
+    if bcrypt.checkpw(user.password.encode('utf-8'), stored_hashed_pw.encode('utf-8')):
+        return {"message": "Login successful"}
+    
+    else:
+        raise HTTPException(status_code=401, detail="Invalid credentials")
+
+
+
+@app.get("/users/{session_user_id}/")
+def get_user(session_user_id: str):
+    conn = sqlite3.connect('items.db')
+    cursor = conn.cursor()
+
+    cursor.execute("SELECT * FROM users WHERE user_id = ?", (user_input,))
+    user = cursor.fetchone()
+    conn.close()
+
+    if user:
+        return {"user_id": user[0], "name": user[1]}
+
+@app.post("/users/")
+def create_user(user: UserModel):
+    conn = sqlite3.connect('items.db')
+    cursor = conn.cursor()
+
+    # Step 1: Hash the password
+    hashed_pw = bcrypt.hashpw(user.password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+
+    try:
+        # Step 2: Insert user into database
+        cursor.execute(
+            "INSERT INTO users (user_id, name, password) VALUES (?, ?, ?)",
+            (user.user_id, user.name, hashed_pw)
         )
+        conn.commit()
+    except sqlite3.IntegrityError:
+        raise HTTPException(status_code=400, detail="User ID already exists")
+    finally:
+        conn.close()
+    return {"message": "account created"}
 
-        # open and insert session
-        db_session = SessionLocal()
-        db_session.add(item)
-        db_session.commit()
 
-        # Retrieve all items and export to JSON
-        items = db_session.query(Item).all()
-        convert_list = [{
-            "id": i.id,
-            "item_name": i.item_name,
-            "brand": i.brand,
-            "date_added": i.date_added,
-            "quantity": i.quantity
-        } for i in items]
+@app.delete("/users/{session_user_id}/")
+def delete_user(session_user_id: str):
+    conn = sqlite3.connect('items.db')
+    cursor = conn.cursor()
 
-        with open("storage.json", "w") as outfile:
-            json.dump(convert_list, outfile, indent=4)
-        db_session.close()
+    #meant to constrain foreign keys
+    cursor.execute("PRAGMA foreign_keys = ON;")
+    cursor.execute("DELETE FROM users WHERE user_id = ?", (session_user_id,))
 
-        with open('storage.json') as file:
-            data = json.load(file)
-        printer = json.dumps(data, indent=4)
-        print(printer)
+    conn.commit()
+    conn.close()
 
-    if choice == 2:
-        delete()
-
-main()
-
-if __name__ == "__main__":
-    main()
+    return {"message": f"User {session_user_id} and their items have been deleted."}

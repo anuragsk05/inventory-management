@@ -5,5 +5,7 @@ CREATE TABLE items (
     item_name TEXT,
     brand TEXT,
     date_added TEXT,
-    quantity INTEGER
+    quantity INTEGER,
+    user_id TEXT,
+    FOREIGN KEY (user_id) REFERENCES users(id)  --users(id) operates as a column the id falls under the user_id
 );
