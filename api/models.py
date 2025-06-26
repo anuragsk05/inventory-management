@@ -11,8 +11,6 @@ class Item(Base):
     brand = Column(String, unique=False, index=True)
     date_added = Column(String, unique=False, index=True)
     quantity = Column(Integer, unique=False, index=True)
-    user_id = Column(String, ForeignKey("users.user_id"))  # Foreign key to User
-    owner = relationship("User", back_populates="items")   # Link to user
 
 class User(Base):
     __tablename__ = "users"
@@ -20,5 +18,4 @@ class User(Base):
     user_id = Column(String, primary_key=True, index=True)
     name = Column(String, unique=False, index=True)
     password = Column(String, unique=False, index=True)
-    items = relationship("Item", back_populates="owner")  # Link to items
     

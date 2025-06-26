@@ -6,6 +6,38 @@
 </head>
 <body>
     <h1>Inventory</h1>
+    <div id="userInfo">
+        <span id="userWelcome">Welcome, </span>
+        <span id="userName">Guest</span>
+        <button onclick="showLoginModal()">Login</button>
+        <button onclick="showRegisterModal()">Register</button>
+        <button onclick="logout()" id="logoutBtn" style="display: none;">Logout</button>
+    </div>
+
+    <div id="loginModal" class="popup">
+        <div class="box">
+            <span class="x" onclick="closeLoginModal()">X</span>
+            <h2>Login</h2>
+            <form id="loginForm">
+                <input type="text" id="loginUsername" placeholder="Username" required>
+                <input type="password" id="loginPassword" placeholder="Password" required>
+                <button type="submit">Login</button>
+            </form>
+        </div>
+    </div>
+
+    <div id="registerModal" class="popup">
+        <div class="box">
+            <span class="x" onclick="closeRegisterModal()">X</span>
+            <h2>Register New User</h2>
+            <form id="registerForm">
+                <input type="text" id="registerUserId" placeholder="User ID" required>
+                <input type="text" id="registerName" placeholder="Full Name" required>
+                <input type="password" id="registerPassword" placeholder="Password" required>
+                <button type="submit">Register</button>
+            </form>
+        </div>
+    </div>
 
     <input type="text" id="searchInput" placeholder="Search...">
 
@@ -50,6 +82,7 @@
         </div>
     </div>
 
-    <script src="script.js"></script>
+    <script src="js/api.js"></script>
+    <script src="js/inventory.js"></script>
 </body>
 </html> 
