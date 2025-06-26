@@ -7,10 +7,18 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from database import SessionLocal, engine
 from models import Item
+from cryptography.fernet import Fernet
+import os
 import models
 
 app = FastAPI()
 
+#to run use "uvicorn main:app --reload"
+#if already used use "lsof -i :8000"
+# to run interactive ui use "http://127.0.0.1:8000/docs"
+
+#passwords been hashed, however data recored within is not, use cryptography to encrypt data post user login and storage
+# encrypt user input before storing into sqlite database, decrypt when showcasing it
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -22,7 +30,15 @@ app.add_middleware(
 models.Base.metadata.create_all(bind=engine)
 
 
+if not os.path.exists("secret.key"):
+    key = Fernet.generate_key()
+    with open("secret.key", "wb") as key_file:
+        key_file.write(key)
+else:
+    with open("secret.key", "rb") as key_file:
+        key = key_file.read()
 
+back_end_key = Fernet(key)
 class UserModel(BaseModel):
     user_id: str
     name : str
@@ -35,6 +51,8 @@ class ItemModel(BaseModel):
     date_added: str
     quantity: int
     user_id: str
+
+
 
 @app.get("/users/{id}/items/")
 def get_all_items():
@@ -58,38 +76,50 @@ def get_all_items():
     conn.close()
     return result
 
+#encryption will occur within add function post user login, before storing data within sqlite databse we need to encrypt it first
 @app.post("/users/{id}/items/")
 def add_item(item: ItemModel):
     conn = sqlite3.connect('items.db')
     cursor = conn.cursor()
-    
+    encrypted_item_name = back_end_key.encrypt(item.item_name.encode()).decode()
+    encrypted_brand = back_end_key.encrypt(item.brand.encode())
+    encrypted_date_added = back_end_key.encrypt(item.date_added.encode()).decode()
+    encrypted_quantity = back_end_key.encrypt(item.quantity.encode()).decode()
+
     cursor.execute("""
         INSERT INTO items (id, item_name, brand, date_added, quantity, user_id) 
         VALUES (?, ?, ?, ?, ?, ?)
-    """, (item.id, item.item_name, item.brand, item.date_added, item.quantity, item.user_id))
-
+    """, (item.id, encrypted_item_name, encrypted_brand, encrypted_date_added, encrypted_quantity, item.user_id))
+    
     
     conn.commit()
     conn.close()
 
 @app.get("/users/{id}/items/{item_id}")
+
+#reaccess encrypted key and then decrypt it
 def get_item(item_id: int):
     conn = sqlite3.connect('items.db')
     cursor = conn.cursor()
-    
-    cursor.execute("SELECT * FROM items WHERE id = ?", (item_id,))
+    decrypted_item_name = back_end_key.decrypt(row[1].encode()).decode()
+    decrypted_brand = back_end_key.decrypt(row[2].encode()).decode()
+    decrypted_date_added = back_end_key.decrypt(row[3].encode()).decode()
+    decrypted_quantity = back_end_key.decrypt(row[4].encode()).decode()
 
+    cursor.execute("SELECT * FROM items WHERE id = ?", (item_id,))
     row = cursor.fetchone()
+
+    
     
     conn.close()
     
     if row:
         return {
             "id": row[0],
-            "item_name": row[1],
-            "brand": row[2],
-            "date_added": row[3],
-            "quantity": row[4]
+            "item_name": decrypted_item_name,
+            "brand": decrypted_brand,
+            "date_added": decrypted_date_added,
+            "quantity": decrypted_quantity
         }
     else:
         return {"error": "Item not found"}
@@ -118,7 +148,6 @@ def delete_item(item_id: int):
     conn.commit()
     conn.close()
 
-
 @app.post("/login/")
 def login_user(user: UserModel):  # user comes in via JSON body
     conn = sqlite3.connect('items.db')
@@ -140,14 +169,12 @@ def login_user(user: UserModel):  # user comes in via JSON body
     else:
         raise HTTPException(status_code=401, detail="Invalid credentials")
 
-
-
 @app.get("/users/{session_user_id}/")
 def get_user(session_user_id: str):
     conn = sqlite3.connect('items.db')
     cursor = conn.cursor()
 
-    cursor.execute("SELECT * FROM users WHERE user_id = ?", (user_input,))
+    cursor.execute("SELECT * FROM users WHERE user_id = ?", (session_user_id,))
     user = cursor.fetchone()
     conn.close()
 
@@ -174,7 +201,6 @@ def create_user(user: UserModel):
     finally:
         conn.close()
     return {"message": "account created"}
-
 
 @app.delete("/users/{session_user_id}/")
 def delete_user(session_user_id: str):
